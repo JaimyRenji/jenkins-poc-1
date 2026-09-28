@@ -1,4 +1,4 @@
-pipeline {
+pipeline { 
     agent any
     environment{
         CI='true'
@@ -20,5 +20,15 @@ pipeline {
                 sh './jenkins/scripts/test.sh'
             }
        }
+       stage('SonarQube Analysis') {
+          steps {
+             withSonarQubeEnv('Sonarqube') {
+                 script {
+                def scannerHome = tool 'sonar-scanner'
+                sh "${scannerHome}/bin/sonar-scanner"
+            }
+            }
+       }
+}
 }
 }
