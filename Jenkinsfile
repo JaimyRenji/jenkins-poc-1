@@ -20,5 +20,12 @@ pipeline {
                 sh './jenkins/scripts/test.sh'
             }
        }
+       stage('SonarQube Analysis') {
+          steps {
+             withSonarQubeEnv('SonarQube') {
+            sh 'sonar-scanner'
+            }
+       }
+}
 }
 }
