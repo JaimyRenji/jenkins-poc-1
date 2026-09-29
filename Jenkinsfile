@@ -1,41 +1,112 @@
 pipeline {
     agent any
-    environment{
-        CI='true'
+
+    environment {
+        CI = 'true'
+        NEXUS_URL = 'http://<NEXUS-PUBLIC-IP>:8081/repository/jenkins-poc'
     }
+
     stages {
-        stage('Checkout') { 
+
+        stage('Checkout') {
             steps {
                 checkout scm
             }
         }
-        stage('Build'){
-            steps{
+
+        stage('Build') {
+            steps {
                 sh 'npm install'
                 sh 'npm run build'
             }
-       }
-       stage('Test'){
-            steps{
+        }
+
+        stage('Test') {
+            steps {
                 sh './jenkins/scripts/test.sh'
             }
-       }
-       stage('SonarQube Analysis') {
-          steps {
-             withSonarQubeEnv('Sonarqube') {
-                 script {
-                def scannerHome = tool 'sonar-scanner'
-                sh "${scannerHome}/bin/sonar-scanner"
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    script {
+                        def scannerHome = tool 'sonar-scanner'
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
+                }
             }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
-       }
-}
-    stage('Quality Gate') {
+        }
+
+stage('Package Feature') {
+    when {
+        branch 'feature-branch-1'
+    }
     steps {
-        timeout(time: 7, unit: 'MINUTES') {
-            waitForQualityGate abortPipeline: true
+        sh 'tar -czf myapp-feature-branch-1-${BUILD_NUMBER}.tar.gz build/'
+    }
+}
+
+stage('Upload Feature Artifact') {
+    when {
+        branch 'feature-branch-1'
+    }
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'nexus-credentials',
+                usernameVariable: 'NEXUS_USER',
+                passwordVariable: 'NEXUS_PASSWORD'
+            )
+        ]) {
+            sh '''
+                curl -u "$NEXUS_USER:$NEXUS_PASSWORD" \
+                --upload-file "myapp-feature-branch-1-${BUILD_NUMBER}.tar.gz" \
+                "${NEXUS_URL}/myapp-feature-branch-1-${BUILD_NUMBER}.tar.gz"
+            '''
         }
     }
 }
-}
+
+
+        stage('Package Release') {
+            when {
+                branch 'master'
+            }
+
+            steps {
+                sh 'tar -czf myapp-release-${BUILD_NUMBER}.tar.gz build/'
+            }
+        }
+
+        stage('Upload Release Artifact') {
+            when {
+                branch 'master'
+            }
+
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'nexus-credentials',
+                        usernameVariable: 'NEXUS_USER',
+                        passwordVariable: 'NEXUS_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        curl -u "$NEXUS_USER:$NEXUS_PASSWORD" \
+                        --upload-file "myapp-release-${BUILD_NUMBER}.tar.gz" \
+                        "${NEXUS_URL}/myapp-release-${BUILD_NUMBER}.tar.gz"
+                    '''
+                }
+            }
+        }
+    }
 }
