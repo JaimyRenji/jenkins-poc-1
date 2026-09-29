@@ -108,7 +108,27 @@ stage('Upload Feature Artifact') {
                 }
             }
         }
-        stage('Test EC2 SSH') {
+stage('Download Release from Nexus') {
+    when {
+        branch 'master'
+    }
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'nexus-credentials',
+                usernameVariable: 'NEXUS_USER',
+                passwordVariable: 'NEXUS_PASSWORD'
+            )
+        ]) {
+            sh '''
+                curl -f -u "$NEXUS_USER:$NEXUS_PASSWORD" \
+                -o "myapp-release-${BUILD_NUMBER}.tar.gz" \
+                "${NEXUS_URL}/myapp-release-${BUILD_NUMBER}.tar.gz"
+            '''
+        }
+    }
+}
+    stage('Copy Artifact to EC2') {
     when {
         branch 'master'
     }
@@ -117,7 +137,11 @@ stage('Upload Feature Artifact') {
             sh '''
                 ssh -o StrictHostKeyChecking=no \
                 ec2-user@3.111.147.229 \
-                "hostname"
+                "mkdir -p /opt/myapp"
+
+                scp -o StrictHostKeyChecking=no \
+                "myapp-release-${BUILD_NUMBER}.tar.gz" \
+                ec2-user@3.111.147.229:/opt/myapp/
             '''
         }
     }
