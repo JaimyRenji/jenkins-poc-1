@@ -146,5 +146,19 @@ stage('Download Release from Nexus') {
         }
     }
 }
+        stage('Smoke Test') {
+    when {
+        branch 'master'
+    }
+    steps {
+        sshagent(['deploy-ec2']) {
+            sh '''
+                ssh -o StrictHostKeyChecking=no \
+                ec2-user@3.111.147.229 \
+                "curl -f http://localhost:3000"
+            '''
+        }
+    }
+}
     }
 }
