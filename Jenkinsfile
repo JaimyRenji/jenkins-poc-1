@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         CI = 'true'
-        NEXUS_URL = 'http://<NEXUS-PUBLIC-IP>:8081/repository/jenkins-poc'
+        NEXUS_URL = 'http://3.111.147.229:8081/repository/jenkins-poc'
     }
 
     stages {
