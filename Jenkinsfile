@@ -108,5 +108,19 @@ stage('Upload Feature Artifact') {
                 }
             }
         }
+        stage('Test EC2 SSH') {
+    when {
+        branch 'master'
+    }
+    steps {
+        sshagent(['deploy-ec2']) {
+            sh '''
+                ssh -o StrictHostKeyChecking=no \
+                ec2-user@3.111.147.229 \
+                "hostname"
+            '''
+        }
+    }
+}
     }
 }
